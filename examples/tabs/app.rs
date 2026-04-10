@@ -31,11 +31,11 @@ impl eframe::App for App {
             match event {
                 egui_term::PtyEvent::Exit => {
                     self.tab_manager.remove(tab_id);
-                },
+                }
                 egui_term::PtyEvent::Title(title) => {
                     self.tab_manager.set_title(tab_id, title);
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
 
@@ -43,12 +43,11 @@ impl eframe::App for App {
             ui.horizontal(|ui| {
                 let tab_ids = self.tab_manager.get_tab_ids();
                 for id in tab_ids {
-                    let tab_title =
-                        if let Some(title) = self.tab_manager.get_title(id) {
-                            title
-                        } else {
-                            String::from("unknown")
-                        };
+                    let tab_title = if let Some(title) = self.tab_manager.get_title(id) {
+                        title
+                    } else {
+                        String::from("unknown")
+                    };
                     if ui.button(tab_title).clicked() {
                         self.tab_manager.set_active(id);
                     }
@@ -86,11 +85,7 @@ impl TabManager {
         }
     }
 
-    fn add(
-        &mut self,
-        command_sender: Sender<(u64, PtyEvent)>,
-        ctx: egui::Context,
-    ) {
+    fn add(&mut self, command_sender: Sender<(u64, PtyEvent)>, ctx: egui::Context) {
         let id = self.tabs.len() as u64;
         let tab = Tab::new(ctx, command_sender, id);
         self.tabs.insert(id, tab);
@@ -103,12 +98,11 @@ impl TabManager {
         }
 
         self.tabs.remove(&id).unwrap();
-        self.active_tab_id =
-            if let Some(next_tab) = self.tabs.iter().find(|t| t.0 <= &id) {
-                Some(*next_tab.0)
-            } else {
-                self.tabs.last_key_value().map(|last_tab| *last_tab.0)
-            };
+        self.active_tab_id = if let Some(next_tab) = self.tabs.iter().find(|t| t.0 <= &id) {
+            Some(*next_tab.0)
+        } else {
+            self.tabs.last_key_value().map(|last_tab| *last_tab.0)
+        };
     }
 
     fn clear(&mut self) {
@@ -154,14 +148,9 @@ struct Tab {
 }
 
 impl Tab {
-    fn new(
-        ctx: egui::Context,
-        command_sender: Sender<(u64, PtyEvent)>,
-        id: u64,
-    ) -> Self {
+    fn new(ctx: egui::Context, command_sender: Sender<(u64, PtyEvent)>, id: u64) -> Self {
         #[cfg(unix)]
-        let system_shell =
-            std::env::var("SHELL").expect("SHELL variable is not defined");
+        let system_shell = std::env::var("SHELL").expect("SHELL variable is not defined");
         #[cfg(windows)]
         let system_shell = "cmd.exe".to_string();
 

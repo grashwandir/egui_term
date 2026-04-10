@@ -10,8 +10,7 @@ pub struct App {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         #[cfg(unix)]
-        let system_shell =
-            std::env::var("SHELL").expect("SHELL variable is not defined");
+        let system_shell = std::env::var("SHELL").expect("SHELL variable is not defined");
         #[cfg(windows)]
         let system_shell = "cmd.exe".to_string();
 
@@ -44,10 +43,7 @@ impl eframe::App for App {
         egui::CentralPanel::default().show(ctx, |ui| {
             let terminal = TerminalView::new(ui, &mut self.terminal_backend)
                 .set_focus(true)
-                .set_size(Vec2::new(
-                    ui.available_width(),
-                    ui.available_height(),
-                ));
+                .set_size(Vec2::new(ui.available_width(), ui.available_height()));
 
             ui.add(terminal);
         });

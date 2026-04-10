@@ -1,7 +1,7 @@
 use egui::{Key, Modifiers, Vec2};
 use egui_term::{
-    generate_bindings, Binding, BindingAction, InputKind, KeyboardBinding,
-    PtyEvent, TerminalBackend, TerminalMode, TerminalView,
+    Binding, BindingAction, InputKind, KeyboardBinding, PtyEvent, TerminalBackend, TerminalMode,
+    TerminalView, generate_bindings,
 };
 use std::sync::mpsc::Receiver;
 
@@ -14,8 +14,7 @@ pub struct App {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         #[cfg(unix)]
-        let system_shell =
-            std::env::var("SHELL").expect("SHELL variable is not defined");
+        let system_shell = std::env::var("SHELL").expect("SHELL variable is not defined");
         #[cfg(windows)]
         let system_shell = "cmd.exe".to_string();
 
@@ -90,10 +89,7 @@ impl eframe::App for App {
             let terminal = TerminalView::new(ui, &mut self.terminal_backend)
                 .set_focus(true)
                 .add_bindings(self.custom_terminal_bindings.clone())
-                .set_size(Vec2::new(
-                    ui.available_width(),
-                    ui.available_height(),
-                ));
+                .set_size(Vec2::new(ui.available_width(), ui.available_height()));
 
             ui.add(terminal);
         });

@@ -3,8 +3,7 @@ use egui::{Context, Ui};
 use egui_dock::tab_viewer::OnCloseResponse;
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use egui_term::{
-    BackendSettings, FontSettings, PtyEvent, TerminalBackend, TerminalFont,
-    TerminalView,
+    BackendSettings, FontSettings, PtyEvent, TerminalBackend, TerminalFont, TerminalView,
 };
 use log::error;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -38,8 +37,7 @@ pub struct Tab {
 impl Tab {
     pub fn term(ctx: Context, command_sender: Sender<(u64, PtyEvent)>) -> Self {
         #[cfg(unix)]
-        let system_shell =
-            std::env::var("SHELL").expect("SHELL variable is not defined");
+        let system_shell = std::env::var("SHELL").expect("SHELL variable is not defined");
         #[cfg(windows)]
         let system_shell = "cmd.exe".to_string();
 
@@ -85,7 +83,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             Err(err) => {
                 error!("close tab {} failed: {err}", tab.id);
                 OnCloseResponse::Ignore
-            },
+            }
             Ok(_) => OnCloseResponse::Close,
         }
     }
@@ -105,10 +103,7 @@ impl App {
             }
         });
 
-        let mut dock_state = DockState::new(vec![Tab::term(
-            ctx.clone(),
-            command_sender.clone(),
-        )]);
+        let mut dock_state = DockState::new(vec![Tab::term(ctx.clone(), command_sender.clone())]);
 
         dock_state.main_surface_mut().split_right(
             NodeIndex::root(),

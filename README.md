@@ -51,7 +51,6 @@ You can also look at [examples](./examples) directory for more information about
 [![dependency status][deps.rs-badge]][deps.rs-link]
 
 - [alacritty_terminal](https://github.com/alacritty/alacritty) (Apache-2.0)
-- [anyhow](https://github.com/dtolnay/anyhow) (MIT OR Apache-2.0)
 - [egui](https://github.com/emilk/egui) (MIT OR Apache-2.0)
 - [open](https://github.com/Byron/open-rs) (MIT)
 

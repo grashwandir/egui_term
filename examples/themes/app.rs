@@ -1,7 +1,5 @@
 use egui::Vec2;
-use egui_term::{
-    ColorPalette, PtyEvent, TerminalBackend, TerminalTheme, TerminalView,
-};
+use egui_term::{ColorPalette, PtyEvent, TerminalBackend, TerminalTheme, TerminalView};
 use std::sync::mpsc::Receiver;
 
 pub struct App {
@@ -13,8 +11,7 @@ pub struct App {
 impl App {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         #[cfg(unix)]
-        let system_shell =
-            std::env::var("SHELL").expect("SHELL variable is not defined");
+        let system_shell = std::env::var("SHELL").expect("SHELL variable is not defined");
         #[cfg(windows)]
         let system_shell = "cmd.exe".to_string();
 
@@ -52,53 +49,51 @@ impl eframe::App for App {
                 }
 
                 if ui.button("3024 Day").clicked() {
-                    self.terminal_theme =
-                        egui_term::TerminalTheme::new(Box::new(ColorPalette {
-                            background: String::from("#F7F7F7"),
-                            foreground: String::from("#4A4543"),
-                            black: String::from("#090300"),
-                            red: String::from("#DB2D20"),
-                            green: String::from("#01A252"),
-                            yellow: String::from("#FDED02"),
-                            blue: String::from("#01A0E4"),
-                            magenta: String::from("#A16A94"),
-                            cyan: String::from("#B5E4F4"),
-                            white: String::from("#A5A2A2"),
-                            bright_black: String::from("#5C5855"),
-                            bright_red: String::from("#E8BBD0"),
-                            bright_green: String::from("#3A3432"),
-                            bright_yellow: String::from("#4A4543"),
-                            bright_blue: String::from("#807D7C"),
-                            bright_magenta: String::from("#D6D5D4"),
-                            bright_cyan: String::from("#CDAB53"),
-                            bright_white: String::from("#F7F7F7"),
-                            ..Default::default()
-                        }));
+                    self.terminal_theme = egui_term::TerminalTheme::new(Box::new(ColorPalette {
+                        background: String::from("#F7F7F7"),
+                        foreground: String::from("#4A4543"),
+                        black: String::from("#090300"),
+                        red: String::from("#DB2D20"),
+                        green: String::from("#01A252"),
+                        yellow: String::from("#FDED02"),
+                        blue: String::from("#01A0E4"),
+                        magenta: String::from("#A16A94"),
+                        cyan: String::from("#B5E4F4"),
+                        white: String::from("#A5A2A2"),
+                        bright_black: String::from("#5C5855"),
+                        bright_red: String::from("#E8BBD0"),
+                        bright_green: String::from("#3A3432"),
+                        bright_yellow: String::from("#4A4543"),
+                        bright_blue: String::from("#807D7C"),
+                        bright_magenta: String::from("#D6D5D4"),
+                        bright_cyan: String::from("#CDAB53"),
+                        bright_white: String::from("#F7F7F7"),
+                        ..Default::default()
+                    }));
                 }
 
                 if ui.button("ubuntu").clicked() {
-                    self.terminal_theme =
-                        egui_term::TerminalTheme::new(Box::new(ColorPalette {
-                            background: String::from("#300A24"),
-                            foreground: String::from("#FFFFFF"),
-                            black: String::from("#2E3436"),
-                            red: String::from("#CC0000"),
-                            green: String::from("#4E9A06"),
-                            yellow: String::from("#C4A000"),
-                            blue: String::from("#3465A4"),
-                            magenta: String::from("#75507B"),
-                            cyan: String::from("#06989A"),
-                            white: String::from("#D3D7CF"),
-                            bright_black: String::from("#555753"),
-                            bright_red: String::from("#EF2929"),
-                            bright_green: String::from("#8AE234"),
-                            bright_yellow: String::from("#FCE94F"),
-                            bright_blue: String::from("#729FCF"),
-                            bright_magenta: String::from("#AD7FA8"),
-                            bright_cyan: String::from("#34E2E2"),
-                            bright_white: String::from("#EEEEEC"),
-                            ..Default::default()
-                        }));
+                    self.terminal_theme = egui_term::TerminalTheme::new(Box::new(ColorPalette {
+                        background: String::from("#300A24"),
+                        foreground: String::from("#FFFFFF"),
+                        black: String::from("#2E3436"),
+                        red: String::from("#CC0000"),
+                        green: String::from("#4E9A06"),
+                        yellow: String::from("#C4A000"),
+                        blue: String::from("#3465A4"),
+                        magenta: String::from("#75507B"),
+                        cyan: String::from("#06989A"),
+                        white: String::from("#D3D7CF"),
+                        bright_black: String::from("#555753"),
+                        bright_red: String::from("#EF2929"),
+                        bright_green: String::from("#8AE234"),
+                        bright_yellow: String::from("#FCE94F"),
+                        bright_blue: String::from("#729FCF"),
+                        bright_magenta: String::from("#AD7FA8"),
+                        bright_cyan: String::from("#34E2E2"),
+                        bright_white: String::from("#EEEEEC"),
+                        ..Default::default()
+                    }));
                 }
             });
         });
@@ -107,10 +102,7 @@ impl eframe::App for App {
             let terminal = TerminalView::new(ui, &mut self.terminal_backend)
                 .set_focus(true)
                 .set_theme(self.terminal_theme.clone())
-                .set_size(Vec2::new(
-                    ui.available_width(),
-                    ui.available_height(),
-                ));
+                .set_size(Vec2::new(ui.available_width(), ui.available_height()));
 
             ui.add(terminal);
         });
