@@ -1,5 +1,6 @@
 mod backend;
 mod bindings;
+mod error;
 mod font;
 mod theme;
 mod types;

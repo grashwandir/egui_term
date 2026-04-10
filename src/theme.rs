@@ -205,14 +205,20 @@ impl TerminalTheme {
     }
 }
 
-fn hex_to_color(hex: &str) -> anyhow::Result<Color32> {
+fn hex_to_color(hex: &str) -> Result<Color32, crate::error::EguiTermError> {
     if hex.len() != 7 {
-        return Err(anyhow::format_err!("input string is in non valid format"));
+        return Err(crate::error::EguiTermError::new(format!(
+            "invalid hex color: {}",
+            hex
+        )));
     }
 
-    let r = u8::from_str_radix(&hex[1..3], 16)?;
-    let g = u8::from_str_radix(&hex[3..5], 16)?;
-    let b = u8::from_str_radix(&hex[5..7], 16)?;
+    let r = u8::from_str_radix(&hex[1..3], 16)
+        .map_err(|_| crate::error::EguiTermError::new(format!("invalid hex color: {}", hex)))?;
+    let g = u8::from_str_radix(&hex[3..5], 16)
+        .map_err(|_| crate::error::EguiTermError::new(format!("invalid hex color: {}", hex)))?;
+    let b = u8::from_str_radix(&hex[5..7], 16)
+        .map_err(|_| crate::error::EguiTermError::new(format!("invalid hex color: {}", hex)))?;
 
     Ok(Color32::from_rgb(r, g, b))
 }
