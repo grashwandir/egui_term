@@ -9,14 +9,14 @@ const TERM_FONT_3270_NAME: &str = "3270";
 const TERM_FONT_CJK_NAME: &str = "cjk";
 
 const TERM_FONT_JET_BRAINS_BYTES: &[u8] = include_bytes!(
-    "../assets/fonts/JetBrains/JetBrainsMonoNerdFontMono-Bold.ttf"
+    "assets/fonts/JetBrains/JetBrainsMonoNerdFontMono-Bold.ttf"
 );
 
 const TERM_FONT_3270_BYTES: &[u8] =
-    include_bytes!("../assets/fonts/3270/3270NerdFont-Regular.ttf");
+    include_bytes!("assets/fonts/3270/3270NerdFont-Regular.ttf");
 
 const TERM_FONT_CJK_BYTES: &[u8] =
-    include_bytes!("../assets/fonts/cjk/LXGWWenKaiMonoTC-Regular.ttf");
+    include_bytes!("assets/fonts/cjk/LXGWWenKaiMonoTC-Regular.ttf");
 
 fn setup_font(ctx: &egui::Context, name: &str) {
     let bytes = match name {
