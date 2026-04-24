@@ -1,6 +1,12 @@
 <!-- markdownlint-disable MD041 MD033 MD045 -->
 <div align="center">
 
+# Fork
+
+Tag: v0.1.0-stratum.1
+
+Edition 2024, workspace lint compliance (`cargo clippy -D warnings` clean).
+
 # egui_term
 
 [![GitHub License][license-badge]][license-link]
