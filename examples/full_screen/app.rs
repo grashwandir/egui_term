@@ -18,7 +18,7 @@ impl App {
         let terminal_backend = TerminalBackend::new(
             0,
             cc.egui_ctx.clone(),
-            pty_proxy_sender.clone(),
+            pty_proxy_sender,
             egui_term::BackendSettings {
                 shell: system_shell,
                 ..Default::default()

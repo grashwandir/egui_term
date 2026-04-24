@@ -84,7 +84,7 @@ pub struct BindingsLayout {
 
 impl Default for BindingsLayout {
     fn default() -> Self {
-        BindingsLayout::new()
+        Self::new()
     }
 }
 
@@ -125,13 +125,14 @@ impl BindingsLayout {
 
             if is_triggered {
                 return action.clone();
-            };
+            }
         }
 
         BindingAction::Ignore
     }
 }
 
+#[expect(clippy::too_many_lines)]
 fn default_keyboard_bindings() -> Vec<(Binding<InputKind>, BindingAction)> {
     generate_bindings!(
         KeyboardBinding;
@@ -473,7 +474,7 @@ mod tests {
             B, Modifiers::SHIFT | Modifiers::CTRL;      BindingAction::Char('B');
             C, Modifiers::SHIFT | Modifiers::CTRL;      BindingAction::Copy;
         );
-        current_layout.add_bindings(custom_bindings.clone());
+        current_layout.add_bindings(custom_bindings);
         for (bind, action) in &current_layout.layout {
             let found_action = current_layout.get_action(
                 bind.target.clone(),

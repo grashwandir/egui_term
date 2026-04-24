@@ -79,16 +79,17 @@ impl Default for TerminalTheme {
     fn default() -> Self {
         Self {
             palette: Box::<ColorPalette>::default(),
-            ansi256_colors: TerminalTheme::get_ansi256_colors(),
+            ansi256_colors: Self::get_ansi256_colors(),
         }
     }
 }
 
 impl TerminalTheme {
+    #[must_use]
     pub fn new(palette: Box<ColorPalette>) -> Self {
         Self {
             palette,
-            ansi256_colors: TerminalTheme::get_ansi256_colors(),
+            ansi256_colors: Self::get_ansi256_colors(),
         }
     }
 
@@ -119,6 +120,10 @@ impl TerminalTheme {
         ansi256_colors
     }
 
+    /// # Panics
+    ///
+    /// Panics if the palette contains an invalid hex color string.
+    #[must_use]
     pub fn get_color(&self, c: ansi::Color) -> Color32 {
         match c {
             ansi::Color::Spec(rgb) => Color32::from_rgb(rgb.r, rgb.g, rgb.b),
@@ -146,8 +151,7 @@ impl TerminalTheme {
                         _ => &self.palette.background,
                     };
 
-                    return hex_to_color(color)
-                        .unwrap_or_else(|_| panic!("invalid color {}", color));
+                    return hex_to_color(color).unwrap_or_else(|_| panic!("invalid color {color}"));
                 }
 
                 // Other colors
@@ -159,7 +163,7 @@ impl TerminalTheme {
             ansi::Color::Named(c) => {
                 let color = match c {
                     NamedColor::Foreground => &self.palette.foreground,
-                    NamedColor::Background => &self.palette.background,
+                    NamedColor::Background | NamedColor::Cursor => &self.palette.background,
                     // Normal terminal colors
                     NamedColor::Black => &self.palette.black,
                     NamedColor::Red => &self.palette.red,
@@ -192,10 +196,9 @@ impl TerminalTheme {
                     NamedColor::DimMagenta => &self.palette.dim_magenta,
                     NamedColor::DimCyan => &self.palette.dim_cyan,
                     NamedColor::DimWhite => &self.palette.dim_white,
-                    _ => &self.palette.background,
                 };
 
-                hex_to_color(color).unwrap_or_else(|_| panic!("invalid color {}", color))
+                hex_to_color(color).unwrap_or_else(|_| panic!("invalid color {color}"))
             }
         }
     }
@@ -204,17 +207,16 @@ impl TerminalTheme {
 fn hex_to_color(hex: &str) -> Result<Color32, crate::error::EguiTermError> {
     if hex.len() != 7 {
         return Err(crate::error::EguiTermError::new(format!(
-            "invalid hex color: {}",
-            hex
+            "invalid hex color: {hex}"
         )));
     }
 
     let r = u8::from_str_radix(&hex[1..3], 16)
-        .map_err(|_| crate::error::EguiTermError::new(format!("invalid hex color: {}", hex)))?;
+        .map_err(|_| crate::error::EguiTermError::new(format!("invalid hex color: {hex}")))?;
     let g = u8::from_str_radix(&hex[3..5], 16)
-        .map_err(|_| crate::error::EguiTermError::new(format!("invalid hex color: {}", hex)))?;
+        .map_err(|_| crate::error::EguiTermError::new(format!("invalid hex color: {hex}")))?;
     let b = u8::from_str_radix(&hex[5..7], 16)
-        .map_err(|_| crate::error::EguiTermError::new(format!("invalid hex color: {}", hex)))?;
+        .map_err(|_| crate::error::EguiTermError::new(format!("invalid hex color: {hex}")))?;
 
     Ok(Color32::from_rgb(r, g, b))
 }

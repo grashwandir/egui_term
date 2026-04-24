@@ -29,16 +29,19 @@ impl Default for TerminalFont {
 }
 
 impl TerminalFont {
+    #[must_use]
     pub fn new(settings: FontSettings) -> Self {
         Self {
             font_type: settings.font_type,
         }
     }
 
+    #[must_use]
     pub fn font_type(&self) -> FontId {
         self.font_type.clone()
     }
 
+    #[must_use]
     pub fn font_measure(&self, ctx: &Context) -> Size {
         let (width, height) = ctx.fonts_mut(|f| {
             (

@@ -18,7 +18,7 @@ pub struct Counter {
 }
 
 impl Counter {
-    pub const fn new() -> Counter {
+    pub const fn new() -> Self {
         Self {
             value: AtomicU64::new(0),
         }
@@ -53,7 +53,7 @@ impl Tab {
         )
         .unwrap();
 
-        Self { id, backend }
+        Self { backend, id }
     }
 }
 
@@ -84,7 +84,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 error!("close tab {} failed: {err}", tab.id);
                 OnCloseResponse::Ignore
             }
-            Ok(_) => OnCloseResponse::Close,
+            Ok(()) => OnCloseResponse::Close,
         }
     }
 }

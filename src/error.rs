@@ -1,4 +1,4 @@
-/// Lightweight error type for egui_term internals.
+/// Lightweight error type for `egui_term` internals.
 ///
 /// Replaces the upstream `anyhow` dependency with a single,
 /// message-carrying struct. Intentionally minimal — no error

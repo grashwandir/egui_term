@@ -1,7 +1,18 @@
+// Terminal backend: pixel↔cell coordinate conversions and mouse protocol
+// encoding use intentional lossy casts throughout (f32→u16 for cell sizes,
+// f32→usize for grid coords, usize/i32→u8 for the X10 mouse protocol).
+// Pure coordinate functions are covered by unit tests at the end of this file.
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless,
+    clippy::cast_possible_wrap
+)]
+
 pub mod settings;
 
 use crate::types::Size;
-use alacritty_terminal::event::{Event, EventListener, Notify, OnResize, WindowSize};
+use alacritty_terminal::event::{Event, EventListener, Notify as _, OnResize as _, WindowSize};
 use alacritty_terminal::event_loop::{EventLoop, Msg, Notifier};
 use alacritty_terminal::grid::{Dimensions, Scroll};
 use alacritty_terminal::index::{Column, Direction, Line, Point, Side};
@@ -19,7 +30,7 @@ use settings::BackendSettings;
 use std::borrow::Cow;
 use std::cmp::min;
 use std::io::Result;
-use std::ops::{Index, RangeInclusive};
+use std::ops::{Index as _, RangeInclusive};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, mpsc};
 
@@ -47,11 +58,11 @@ pub enum MouseMode {
 impl From<TermMode> for MouseMode {
     fn from(term_mode: TermMode) -> Self {
         if term_mode.contains(TermMode::SGR_MOUSE) {
-            MouseMode::Sgr
+            Self::Sgr
         } else if term_mode.contains(TermMode::UTF8_MOUSE) {
-            MouseMode::Normal(true)
+            Self::Normal(true)
         } else {
-            MouseMode::Normal(false)
+            Self::Normal(false)
         }
     }
 }
@@ -142,6 +153,13 @@ pub struct TerminalBackend {
 }
 
 impl TerminalBackend {
+    /// # Errors
+    ///
+    /// Returns an error if the PTY process fails to spawn.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the URL regex fails to compile (static pattern, should never happen).
     pub fn new(
         id: u64,
         app_context: egui::Context,
@@ -179,20 +197,20 @@ impl TerminalBackend {
             hovered_hyperlink: None,
         };
         let term = Arc::new(FairMutex::new(term));
-        let pty_event_loop = EventLoop::new(term.clone(), event_proxy, pty, false, false)?;
+        let pty_event_loop = EventLoop::new(Arc::clone(&term), event_proxy, pty, false, false)?;
         let notifier = Notifier(pty_event_loop.channel());
         let pty_notifier = Notifier(pty_event_loop.channel());
         let url_regex = RegexSearch::new(r#"(ipfs:|ipns:|magnet:|mailto:|gemini://|gopher://|https://|http://|news:|file://|git://|ssh:|ftp://)[^\u{0000}-\u{001F}\u{007F}-\u{009F}<>"\s{-}\^⟨⟩`]+"#).unwrap();
         let _pty_event_loop_thread = pty_event_loop.spawn();
         let _pty_event_subscription = std::thread::Builder::new()
-            .name(format!("pty_event_subscription_{}", id))
+            .name(format!("pty_event_subscription_{id}"))
             .spawn(move || {
                 loop {
                     if let Ok(event) = event_receiver.recv() {
                         pty_event_proxy_sender
                             .send((id, event.clone()))
                             .unwrap_or_else(|_| {
-                                panic!("pty_event_subscription_{}: sending PtyEvent is failed", id)
+                                panic!("pty_event_subscription_{id}: sending PtyEvent is failed")
                             });
                         app_context.clone().request_repaint();
                         match event {
@@ -208,7 +226,7 @@ impl TerminalBackend {
             id,
             pty_id,
             url_regex,
-            term: term.clone(),
+            term,
             size: terminal_size,
             notifier,
             last_content: initial_content,
@@ -216,7 +234,7 @@ impl TerminalBackend {
     }
 
     pub fn process_command(&mut self, cmd: BackendCommand) {
-        let term = self.term.clone();
+        let term = Arc::clone(&self.term);
         let mut term = term.lock();
         match cmd {
             BackendCommand::Write(input) => {
@@ -241,9 +259,10 @@ impl TerminalBackend {
             BackendCommand::MouseReport(button, modifiers, point, pressed) => {
                 self.process_mouse_report(button, modifiers, point, pressed);
             }
-        };
+        }
     }
 
+    #[must_use]
     pub fn selection_point(
         x: f32,
         y: f32,
@@ -259,6 +278,7 @@ impl TerminalBackend {
         viewport_to_point(display_offset, Point::new(line, col))
     }
 
+    #[must_use]
     pub fn selectable_content(&self) -> String {
         let content = self.last_content();
         let mut result = String::new();
@@ -273,7 +293,7 @@ impl TerminalBackend {
     }
 
     pub fn sync(&mut self) -> &RenderableContent {
-        let term = self.term.clone();
+        let term = Arc::clone(&self.term);
         let mut terminal = term.lock();
         let selectable_range = match &terminal.selection {
             Some(s) => s.to_range(&terminal),
@@ -283,20 +303,23 @@ impl TerminalBackend {
         let cursor = terminal.grid_mut().cursor_cell().clone();
         self.last_content.grid = terminal.grid().clone();
         self.last_content.selectable_range = selectable_range;
-        self.last_content.cursor = cursor.clone();
+        self.last_content.cursor = cursor;
         self.last_content.terminal_mode = *terminal.mode();
         self.last_content.terminal_size = self.size;
         self.last_content()
     }
 
+    #[must_use]
     pub fn last_content(&self) -> &RenderableContent {
         &self.last_content
     }
 
+    #[must_use]
     pub fn id(&self) -> u64 {
         self.id
     }
 
+    #[must_use]
     pub fn pty_id(&self) -> u32 {
         self.pty_id
     }
@@ -318,7 +341,7 @@ impl TerminalBackend {
             LinkAction::Open => {
                 self.open_link();
             }
-        };
+        }
     }
 
     fn open_link(&self) {
@@ -336,7 +359,7 @@ impl TerminalBackend {
 
             open::that(url).unwrap_or_else(|_| {
                 panic!("link opening is failed");
-            })
+            });
         }
     }
 
@@ -362,9 +385,9 @@ impl TerminalBackend {
             MouseMode::Sgr => self.sgr_mouse_report(point, button as u8 + mods, pressed),
             MouseMode::Normal(is_utf8) => {
                 if pressed {
-                    self.normal_mouse_report(point, button as u8 + mods, is_utf8)
+                    self.normal_mouse_report(point, button as u8 + mods, is_utf8);
                 } else {
-                    self.normal_mouse_report(point, 3 + mods, is_utf8)
+                    self.normal_mouse_report(point, 3 + mods, is_utf8);
                 }
             }
         }
@@ -417,7 +440,7 @@ impl TerminalBackend {
     }
 
     fn start_selection(
-        &mut self,
+        &self,
         terminal: &mut Term<EventProxy>,
         selection_type: SelectionType,
         x: f32,
@@ -431,7 +454,7 @@ impl TerminalBackend {
         ));
     }
 
-    fn update_selection(&mut self, terminal: &mut Term<EventProxy>, x: f32, y: f32) {
+    fn update_selection(&self, terminal: &mut Term<EventProxy>, x: f32, y: f32) {
         let display_offset = terminal.grid().display_offset();
         if let Some(ref mut selection) = terminal.selection {
             let location = Self::selection_point(x, y, &self.size, display_offset);
@@ -481,7 +504,7 @@ impl TerminalBackend {
         self.notifier.notify(input);
     }
 
-    fn scroll(&mut self, terminal: &mut Term<EventProxy>, delta_value: i32) {
+    fn scroll(&self, terminal: &mut Term<EventProxy>, delta_value: i32) {
         if delta_value != 0 {
             let scroll = Scroll::Delta(delta_value);
             if terminal
@@ -504,8 +527,9 @@ impl TerminalBackend {
         }
     }
 
-    /// Based on alacritty/src/display/hint.rs > regex_match_at
+    /// Based on alacritty/src/display/hint.rs > `regex_match_at`
     /// Retrieve the match, if the specified point is inside the content matching the regex.
+    #[expect(clippy::unused_self)]
     fn regex_match_at(
         &self,
         terminal: &Term<EventProxy>,
@@ -567,6 +591,146 @@ pub struct EventProxy(mpsc::Sender<Event>);
 
 impl EventListener for EventProxy {
     fn send_event(&self, event: Event) {
-        let _ = self.0.send(event.clone());
+        let _ = self.0.send(event);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_size(cell_width: u16, cell_height: u16, num_cols: u16, num_lines: u16) -> TerminalSize {
+        TerminalSize {
+            cell_width,
+            cell_height,
+            num_cols,
+            num_lines,
+            layout_size: Size::default(),
+        }
+    }
+
+    // --- TerminalSize accessors ---
+
+    #[test]
+    fn default_terminal_size() {
+        let size = TerminalSize::default();
+        assert_eq!(size.screen_lines(), 50);
+        assert_eq!(size.columns(), 80);
+        assert_eq!(size.total_lines(), 50);
+        assert_eq!(size.last_column(), Column(79));
+        assert_eq!(size.bottommost_line(), Line(49));
+    }
+
+    #[test]
+    fn terminal_size_single_cell() {
+        let size = make_size(8, 16, 1, 1);
+        assert_eq!(size.screen_lines(), 1);
+        assert_eq!(size.columns(), 1);
+        assert_eq!(size.last_column(), Column(0));
+        assert_eq!(size.bottommost_line(), Line(0));
+    }
+
+    #[test]
+    fn terminal_size_large_grid() {
+        let size = make_size(6, 12, 300, 500);
+        assert_eq!(size.screen_lines(), 500);
+        assert_eq!(size.columns(), 300);
+        assert_eq!(size.last_column(), Column(299));
+        assert_eq!(size.bottommost_line(), Line(499));
+    }
+
+    // --- selection_point ---
+    // Follows Alacritty's pattern: assert full Point (line + column).
+    // With display_offset=0, viewport_to_point is identity on lines.
+
+    #[test]
+    fn selection_point_origin() {
+        let size = make_size(10, 20, 80, 24);
+        let point = TerminalBackend::selection_point(0.0, 0.0, &size, 0);
+        assert_eq!(point, Point::new(Line(0), Column(0)));
+    }
+
+    #[test]
+    fn selection_point_mid_cell() {
+        let size = make_size(10, 20, 80, 24);
+        // x=15 / cell_width=10 → col 1, y=25 / cell_height=20 → line 1
+        let point = TerminalBackend::selection_point(15.0, 25.0, &size, 0);
+        assert_eq!(point, Point::new(Line(1), Column(1)));
+    }
+
+    #[test]
+    fn selection_point_exact_cell_boundary() {
+        let size = make_size(10, 20, 80, 24);
+        // x=30 / 10 → col 3, y=40 / 20 → line 2
+        let point = TerminalBackend::selection_point(30.0, 40.0, &size, 0);
+        assert_eq!(point, Point::new(Line(2), Column(3)));
+    }
+
+    #[test]
+    fn selection_point_clamps_column() {
+        let size = make_size(10, 20, 80, 24);
+        // x=5000 → col 500, clamped to last_column (79)
+        let point = TerminalBackend::selection_point(5000.0, 0.0, &size, 0);
+        assert_eq!(point, Point::new(Line(0), Column(79)));
+    }
+
+    #[test]
+    fn selection_point_clamps_line() {
+        let size = make_size(10, 20, 80, 24);
+        // y=5000 → line 250, clamped to num_lines-1 (23)
+        let point = TerminalBackend::selection_point(0.0, 5000.0, &size, 0);
+        assert_eq!(point, Point::new(Line(23), Column(0)));
+    }
+
+    #[test]
+    fn selection_point_with_display_offset() {
+        let size = make_size(10, 20, 80, 24);
+        // Viewport line 0 with display_offset=5 → absolute Line(0 - 5) = Line(-5)
+        let point = TerminalBackend::selection_point(0.0, 0.0, &size, 5);
+        assert_eq!(point, Point::new(Line(-5), Column(0)));
+    }
+
+    // --- selection_side ---
+    // selection_side is private and requires &self, so we replicate its
+    // logic inline — same pattern the alacritty tests use for pure math.
+
+    fn compute_selection_side(x: f32, cell_width: u16) -> Side {
+        let cell_x = x as usize % cell_width as usize;
+        let half_cell_width = (f32::from(cell_width) / 2.0) as usize;
+        if cell_x > half_cell_width {
+            Side::Right
+        } else {
+            Side::Left
+        }
+    }
+
+    #[test]
+    fn selection_side_left_of_center() {
+        // cell_width=10, half=5. x=3 → cell_x=3 ≤ 5 → Left
+        assert_eq!(compute_selection_side(3.0, 10), Side::Left);
+    }
+
+    #[test]
+    fn selection_side_right_of_center() {
+        // cell_width=10, half=5. x=18 → cell_x = 18%10 = 8 > 5 → Right
+        assert_eq!(compute_selection_side(18.0, 10), Side::Right);
+    }
+
+    #[test]
+    fn selection_side_exactly_at_center() {
+        // cell_width=10, half=5. x=5 → cell_x=5, 5 ≤ 5 → Left
+        assert_eq!(compute_selection_side(5.0, 10), Side::Left);
+    }
+
+    #[test]
+    fn selection_side_at_cell_boundary() {
+        // cell_width=10, x=10 → cell_x = 10%10 = 0 ≤ 5 → Left
+        assert_eq!(compute_selection_side(10.0, 10), Side::Left);
+    }
+
+    #[test]
+    fn selection_side_just_past_center() {
+        // cell_width=10, half=5. x=6 → cell_x=6 > 5 → Right
+        assert_eq!(compute_selection_side(6.0, 10), Side::Right);
     }
 }

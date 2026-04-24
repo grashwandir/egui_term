@@ -89,7 +89,7 @@ impl TabManager {
         let id = self.tabs.len() as u64;
         let tab = Tab::new(ctx, command_sender, id);
         self.tabs.insert(id, tab);
-        self.active_tab_id = Some(id)
+        self.active_tab_id = Some(id);
     }
 
     fn remove(&mut self, id: u64) {
@@ -115,7 +115,7 @@ impl TabManager {
         }
     }
 
-    fn get_title(&mut self, id: u64) -> Option<String> {
+    fn get_title(&self, id: u64) -> Option<String> {
         self.tabs.get(&id).map(|tab| tab.title.clone())
     }
 
@@ -133,6 +133,7 @@ impl TabManager {
         self.tabs.keys().copied().collect()
     }
 
+    #[expect(clippy::cast_possible_truncation)]
     fn set_active(&mut self, id: u64) {
         if id as usize > self.tabs.len() {
             return;
@@ -167,7 +168,7 @@ impl Tab {
 
         Self {
             backend,
-            title: format!("tab: {}", id),
+            title: format!("tab: {id}"),
         }
     }
 

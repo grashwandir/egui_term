@@ -1,3 +1,13 @@
+// Terminal view: grid coordinate layout math uses intentional lossy casts
+// (usize→f32 for column indices, i32→f32 for line numbers, f32→i32 for
+// scroll line counts). Terminal dimensions never exceed safe ranges.
+// Scroll logic is covered by unit tests at the end of this file.
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss
+)]
+
 use alacritty_terminal::index::Point as TerminalGridPoint;
 use alacritty_terminal::term::TermMode;
 use alacritty_terminal::term::cell;
@@ -60,7 +70,7 @@ impl Widget for TerminalView<'_> {
         self.focus(&layout)
             .resize(&layout)
             .process_input(&layout, &mut state)
-            .show(&mut state, &layout, &painter);
+            .show(&state, &layout, &painter);
 
         ui.memory_mut(|m| m.data.insert_temp(widget_id, state));
         layout
@@ -84,30 +94,35 @@ impl<'a> TerminalView<'a> {
     }
 
     #[inline]
+    #[must_use]
     pub fn set_theme(mut self, theme: TerminalTheme) -> Self {
         self.theme = theme;
         self
     }
 
     #[inline]
+    #[must_use]
     pub fn set_font(mut self, font: TerminalFont) -> Self {
         self.font = font;
         self
     }
 
     #[inline]
+    #[must_use]
     pub fn set_focus(mut self, has_focus: bool) -> Self {
         self.has_focus = has_focus;
         self
     }
 
     #[inline]
+    #[must_use]
     pub fn set_size(mut self, size: Vec2) -> Self {
         self.size = size;
         self
     }
 
     #[inline]
+    #[must_use]
     pub fn add_bindings(mut self, bindings: Vec<(Binding<InputKind>, BindingAction)>) -> Self {
         self.bindings_layout.add_bindings(bindings);
         self
@@ -168,14 +183,14 @@ impl<'a> TerminalView<'a> {
                     &self.bindings_layout,
                     button,
                     pos,
-                    &modifiers,
+                    modifiers,
                     pressed,
                 )),
                 egui::Event::PointerMoved(pos) => {
-                    input_actions = process_mouse_move(state, layout, self.backend, pos, &modifiers)
+                    input_actions = process_mouse_move(state, layout, self.backend, pos, modifiers);
                 }
                 _ => {}
-            };
+            }
 
             for action in input_actions {
                 match action {
@@ -193,12 +208,12 @@ impl<'a> TerminalView<'a> {
         self
     }
 
-    fn show(self, state: &mut TerminalViewState, layout: &Response, painter: &Painter) {
+    fn show(self, state: &TerminalViewState, layout: &Response, painter: &Painter) {
         let content = self.backend.sync();
         let layout_min = layout.rect.min;
         let layout_max = layout.rect.max;
-        let cell_height = content.terminal_size.cell_height as f32;
-        let cell_width = content.terminal_size.cell_width as f32;
+        let cell_height = f32::from(content.terminal_size.cell_height);
+        let cell_width = f32::from(content.terminal_size.cell_width);
         let global_bg = self.theme.get_color(Color::Named(NamedColor::Background));
 
         let mut shapes = vec![Shape::Rect(RectShape::filled(
@@ -416,17 +431,17 @@ fn process_mouse_wheel(
             state.scroll_pixels -= delta.y;
             let lines = (state.scroll_pixels / font_size).trunc();
             state.scroll_pixels %= font_size;
-            if lines != 0.0 {
-                InputAction::BackendCall(BackendCommand::Scroll(-lines as i32))
-            } else {
+            if lines == 0.0 {
                 InputAction::Ignore
+            } else {
+                InputAction::BackendCall(BackendCommand::Scroll(-lines as i32))
             }
         }
         MouseWheelUnit::Page => InputAction::Ignore,
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn process_button_click(
     state: &mut TerminalViewState,
     layout: &Response,
@@ -434,7 +449,7 @@ fn process_button_click(
     bindings_layout: &BindingsLayout,
     button: PointerButton,
     position: Pos2,
-    modifiers: &Modifiers,
+    modifiers: Modifiers,
     pressed: bool,
 ) -> InputAction {
     match button {
@@ -457,14 +472,14 @@ fn process_left_button(
     backend: &TerminalBackend,
     bindings_layout: &BindingsLayout,
     position: Pos2,
-    modifiers: &Modifiers,
+    modifiers: Modifiers,
     pressed: bool,
 ) -> InputAction {
     let terminal_mode = backend.last_content().terminal_mode;
     if terminal_mode.intersects(TermMode::MOUSE_MODE) {
         InputAction::BackendCall(BackendCommand::MouseReport(
             MouseButton::LeftButton,
-            *modifiers,
+            modifiers,
             state.current_mouse_position_on_grid,
             pressed,
         ))
@@ -490,7 +505,7 @@ fn process_left_button_released(
     backend: &TerminalBackend,
     bindings_layout: &BindingsLayout,
     position: Pos2,
-    modifiers: &Modifiers,
+    modifiers: Modifiers,
 ) -> InputAction {
     state.is_dragged = false;
     if layout.double_clicked() || layout.triple_clicked() {
@@ -499,7 +514,7 @@ fn process_left_button_released(
         let terminal_content = backend.last_content();
         let binding_action = bindings_layout.get_action(
             InputKind::Mouse(PointerButton::Primary),
-            *modifiers,
+            modifiers,
             terminal_content.terminal_mode,
         );
 
@@ -535,7 +550,7 @@ fn process_mouse_move(
     layout: &Response,
     backend: &TerminalBackend,
     position: Pos2,
-    modifiers: &Modifiers,
+    modifiers: Modifiers,
 ) -> Vec<InputAction> {
     let terminal_content = backend.last_content();
     let cursor_x = position.x - layout.rect.min.x;
@@ -554,7 +569,7 @@ fn process_mouse_move(
         let cmd = if terminal_mode.contains(TermMode::MOUSE_MOTION) && modifiers.is_none() {
             InputAction::BackendCall(BackendCommand::MouseReport(
                 MouseButton::LeftMove,
-                *modifiers,
+                modifiers,
                 state.current_mouse_position_on_grid,
                 true,
             ))
@@ -574,4 +589,93 @@ fn process_mouse_move(
     }
 
     actions
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- process_mouse_wheel ---
+
+    #[test]
+    fn mouse_wheel_line_scroll_up() {
+        let mut state = TerminalViewState::default();
+        let action =
+            process_mouse_wheel(&mut state, 16.0, MouseWheelUnit::Line, Vec2::new(0.0, 3.7));
+        match action {
+            InputAction::BackendCall(BackendCommand::Scroll(lines)) => {
+                // ceil(3.7) * signum(3.7) = 4.0 → cast to i32 = 4
+                assert_eq!(lines, 4);
+            }
+            _ => panic!("expected Scroll command"),
+        }
+    }
+
+    #[test]
+    fn mouse_wheel_line_scroll_down() {
+        let mut state = TerminalViewState::default();
+        let action =
+            process_mouse_wheel(&mut state, 16.0, MouseWheelUnit::Line, Vec2::new(0.0, -2.1));
+        match action {
+            InputAction::BackendCall(BackendCommand::Scroll(lines)) => {
+                // signum(-2.1) * ceil(2.1) = -3.0 → cast to i32 = -3
+                assert_eq!(lines, -3);
+            }
+            _ => panic!("expected Scroll command"),
+        }
+    }
+
+    #[test]
+    fn mouse_wheel_point_below_threshold_ignored() {
+        let mut state = TerminalViewState::default();
+        // 10 pixels with font_size=16 → trunc(10/16) = 0 → Ignore
+        let action = process_mouse_wheel(
+            &mut state,
+            16.0,
+            MouseWheelUnit::Point,
+            Vec2::new(0.0, -10.0),
+        );
+        assert!(matches!(action, InputAction::Ignore));
+        // Pixels accumulated for next event
+        assert!((state.scroll_pixels - 10.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn mouse_wheel_point_accumulates_to_line() {
+        let mut state = TerminalViewState::default();
+        let font_size = 16.0;
+
+        // First: 10px, not enough
+        let _ = process_mouse_wheel(
+            &mut state,
+            font_size,
+            MouseWheelUnit::Point,
+            Vec2::new(0.0, -10.0),
+        );
+
+        // Second: 10 more → scroll_pixels=20, trunc(20/16)=1, Scroll(-1)
+        let action = process_mouse_wheel(
+            &mut state,
+            font_size,
+            MouseWheelUnit::Point,
+            Vec2::new(0.0, -10.0),
+        );
+        match action {
+            InputAction::BackendCall(BackendCommand::Scroll(lines)) => {
+                // scroll_pixels -= (-10) → +20; lines = trunc(20/16) = 1; Scroll(-lines) = -1
+                assert_eq!(lines, -1);
+            }
+            _ => panic!("expected Scroll command"),
+        }
+        // Remainder: 20 % 16 = 4px carried forward
+        assert!((state.scroll_pixels - 4.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn mouse_wheel_page_ignored() {
+        let mut state = TerminalViewState::default();
+        let action =
+            process_mouse_wheel(&mut state, 16.0, MouseWheelUnit::Page, Vec2::new(0.0, 1.0));
+        assert!(matches!(action, InputAction::Ignore));
+    }
 }

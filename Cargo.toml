@@ -5,8 +5,68 @@ authors = ["Ilya Shvyryalkin <ilyashvy@gmail.com>", "Niels Kowalski"]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.94"
+repository = "https://github.com/grashwandir/egui_term"
+keywords = ["egui", "terminal", "alacritty"]
 categories = ["gui"]
 license = "MIT"
+readme = "README.md"
+
+[lints.clippy]
+#all                = { level = "warn", priority = -1 }
+correctness         = { level = "deny", priority = -1 }
+suspicious          = { level = "warn", priority = -1 }
+style               = { level = "warn", priority = -1 }
+complexity          = { level = "warn", priority = -1 }
+perf                = { level = "warn", priority = -1 }
+
+# - PEDANTIC : "really opinionated lints that may have some intentional false positives in order to prevent false negatives"
+pedantic            = { level = "warn", priority = -1 }
+#-------------------------------------------
+# Mandatory Bevy allows to add when enabling pedantic (without these it is unusable):
+#-------------------------------------------
+# Bevy Res<T>/Query/Commands are taken by value by design; this fires on every system. https://github.com/rust-lang/rust-clippy/issues/8940
+needless_pass_by_value = "allow"
+# Bevy query generics explode to deeply nested types; Bevy itself sets this to allow at the workspace level (bevyengine/bevy PR #10011).
+type_complexity = "allow"
+# Fires on `stratum_core::CorePlugin` / `stratum_input::StratumInputPlugin` naming — idiomatic for Bevy plugin crates.
+module_name_repetitions = "allow"
+
+# - RESTRICTION
+allow_attributes = "warn"
+clone_on_ref_ptr = "warn"
+create_dir = "warn"
+dbg_macro = "warn"
+exit = "warn"
+undocumented_unsafe_blocks = "warn"
+unused_result_ok = "warn"
+unused_trait_names = "warn"
+# unwrap_used = "warn"
+
+# - CARGO
+# Low noise, high value for a multi-crate workspace like Stratum
+cargo = { level = "warn", priority = -1 }
+# Transitive dependency duplicates from bevy's deep dep tree; not fixable at workspace level.
+multiple_crate_versions = "allow"
+
+# - Nursery: enable group, suppress known false-positive sources; Experimental lints with higher false-positive rate
+nursery                         = { level = "warn", priority = -1 }
+missing_const_for_fn            = "allow"  # FPs with Drop types and stable const limitations
+significant_drop_tightening     = "allow"  # FPs with Mutex guards and complex drop patterns
+suboptimal_flops                = "allow"  # mul_add not always faster; noisy in f32 math
+option_if_let_else              = "allow"  # known to suggest code that doesn't compile
+
+[lints.rustdoc]
+# warn by default, but to be explicit
+broken_intra_doc_links = "warn"
+# Allowed: doc comments deliberately cross-link internal helpers for IDE
+# navigation, knowing those links won't render in public docs.rs output.
+# Flip back to "warn" if/when the project publishes docs publicly and wants
+# to catch leaked private-item references before they break.
+private_intra_doc_links = "allow"
+
+# allowed by default
+missing_crate_level_docs = "warn"
+unescaped_backticks = "warn"
 
 [dependencies]
 egui = "0.33"
